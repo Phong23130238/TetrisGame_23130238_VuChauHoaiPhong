@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tetris - Level 1</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <link rel="stylesheet" href="/src/css/game.css">
+    <link rel="stylesheet" href="/src/css/common.css">
+</head>
+<body>
+    <main class="game-page">
+        <div class="game-container">
+            <aside class="game-left-panel">
+                <section class="game-panel hold-panel">
+                    <h2 class="panel-title">KHỐI LƯU TRỮ</h2>
+                    <div id="hold-board" class="preview-board">
+                    </div>
+                </section>
+                <section class="game-panel score-panel">
+                    <h2 class="panel-title">ĐIỂM SỐ</h2>
+                    <div class="score-info">
+                        <div class="score-item">
+                            <span class="score-label">ĐIỂM</span>
+                            <strong id="score-value" class="score-value">
+                                0
+                            </strong>
+                        </div>
+                        <div class="score-item">
+                            <span class="score-label">MÀN</span>
+                            <strong id="level-value" class="score-value">1</strong>
+                        </div>
+                        <div class="score-item">
+                            <span class="score-label">DÒNG</span>
+                            <strong id="lines-value" class="score-value">0</strong>
+                        </div>
+                    </div>
+                </section>
+            </aside>
+                <section class="game-center">
+                    <div class="board-wrapper">
+                        <div id="game-board" class="game-board">JS ở đây</div>
+                    </div>
+                </section>
+
+                <aside class="game-right-panel">
+                    <section class="game-panel next-panel">
+                        <h2 class="panel-title">MẢNH TIẾP THEO</h2>
+                        <div class="next-list">
+                            <div id="next-1" class="next-item preview-board"></div>
+                            <div id="next-2" class="next-item preview-board"></div>
+                            <div id="next-3" class="next-item preview-board"></div>
+                        </div>
+                    </section>
+
+                    <button id="pause-button" class="pause-button" type="button" title="Dừng">
+                        <i class="fa-solid fa-pause"></i>
+                    </button>
+                </aside>
+
+
+        </div>
+<!--Tbao dừng game-->
+        <div id="pause-overlay" class="game-overlay hidden">
+            <div class="overlay-panel">
+                <h2>ĐÃ TẠM DỪNG</h2>
+
+                <button id="resume-button" class="game-action-button resume-button" type="button">
+                    TIẾP TỤC
+                </button>
+
+                <button id="pause-settings-button" class="game-action-button" type="button">
+                    <i class="fa-solid fa-gear"><span>CÀI ĐẶT</span></i>
+                </button>
+
+                <button id="exit-button" class="game-action-button exit-button" type="button">THOÁT</button>
+            </div>
+        </div>
+
+<!--   Tbao cài đặt khi dừng     -->
+        <div id="settings-overlay" class="game-overlay hidden">
+            <div class="overlay-panel">
+                <h2>CÀI ĐẶT</h2>
+
+                <div class="setting-row">
+                    <span>Hiệu ứng âm thanh</span>
+                    <input type="checkbox" class="sound-setting" checked>
+                </div>
+                <div class="setting-row">
+                    <span>Âm nhạc</span>
+                    <input type="checkbox" class="music-setting" checked>
+                </div>
+                <div class="setting-row">
+                    <span>Hiệu ứng</span>
+                    <input type="checkbox" class="animation-setting"  checked>
+                </div>
+                <div class="setting-row">
+                    <span>Mảnh Ghost</span>
+                    <input type="checkbox" class="ghost-setting" checked>
+                </div>
+
+                <button id="reset-score-button" class="game-action-button exit-button" type="button">LÀM MỚI KỈ LỤC</button>
+                <button id="setting-back-button" class="game-action-button">TRỞ LẠI</button>
+            </div>
+        </div>
+<!--   Tbao game over-->
+        <div id="game-over-overlay" class="game-overlay hidden">
+            <div class="game-over-panel">
+                <h2 class="game-over-title">THUA MẤT RỒI!!!</h2>
+
+                <div class="game-over-score-box">
+                    <h3>ĐIỂM CAO NHẤT</h3>
+                    <div class="game-over-score-list">
+                        <div>7003</div>
+                        <div>5000</div>
+                        <div>3000</div>
+                        <div>2500</div>
+                        <div>1000</div>
+                    </div>
+                </div>
+
+                <div class="game-over-actions">
+                    <button id="home-button" class="game-over-button" type="button" title="Về menu">
+                        <i class="fa-solid fa-house"></i>
+                    </button>
+                    <button id="replay-button" class="game-over-button" type="button" title="Chơi lại">
+                        <i class="fa-solid fa-rotate-left"></i>
+                    </button>
+                    <button id="more-games-button" class="more-games-button" type="button" title="Bàn tiếp theo">
+                        <i class="fa-solid fa-gamepad"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script type="module" src="../js/main.js"></script>
+</body>
+</html>
