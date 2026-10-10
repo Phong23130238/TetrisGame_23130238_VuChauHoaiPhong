@@ -1,0 +1,165 @@
+.menu-page{
+    min-height: 100%;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 40px;
+}
+
+.menu-container{
+    width: 1100px;
+
+    display: grid;
+    grid-template-columns: 700px 350px;
+    gap: 30px;
+}
+
+.menu-main{
+    padding: 40px;
+
+    background-color: #222;
+    border: 2px solid #444;
+    border-radius: 20px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.game-title{
+    margin: 0 0 30px;
+    font-size: 64px;
+    font-weight: 900;
+    letter-spacing: 8px;
+    text-align: center;
+}
+
+.menu-button{
+    border: none;
+    border-radius: 10px;
+
+    min-width: 220px;
+    padding: 14px 30px;
+
+    font-size: 18px;
+    font-weight: bold;
+
+    transition: transform 0.15s ease;
+}
+
+.menu-button:hover{
+    transform: scale(1.1);
+}
+
+.play-button{
+    background-color: #53DA3F;
+    color: #ffffff;
+
+    margin-bottom: 35px;
+}
+.settings-button{
+    display: block;
+    background-color: #0077D3;
+    color: #ffffff;
+    margin: 25px auto 0;
+}
+
+.section-title{
+    margin: 0 0 15px;
+    font-size: 24px;
+    text-align: center;
+    letter-spacing: 4px;
+}
+
+.level-section{
+    width: 100%;
+}
+.level-list{
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 80%;
+    margin: 0 auto;
+}
+.level-item{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+
+    background-color: #181818;
+    border: 2px solid #333;
+    border-radius: 6px;
+
+    cursor: pointer;
+}
+.level-item input{
+    width: 18px;
+    height: 18px;
+}
+
+.high-score-section{
+    width: 100%;
+    margin-top: 30px;
+}
+.high-score-list{
+    width: 80%;
+    margin: 0 auto;
+
+    border: 1px solid #444;
+    border-radius: 8px;
+    overflow: hidden;
+}
+.score-row{
+    display: grid;
+    grid-template-columns: 40px 1fr 80px;
+    padding: 10px 15px;
+    background-color: #181818;
+    border-bottom: 1px solid #333;
+}
+.score-row:last-child {
+    border-bottom: none;
+}
+
+.player-score{
+    font-weight: bold;
+    text-align: right;
+}
+
+
+.level-note{
+    padding: 30px;
+    background-color: #222;
+    border: 1px solid #444;
+    border-radius: 20px;
+}
+.note-title{
+    margin: 0 0 25px;
+    text-align: center;
+    font-size: 22px;
+    letter-spacing: 2px;
+}
+.note-content{
+    padding: 20px;
+    background-color: #181818;
+    border-radius: 10px;
+}
+.note-level{
+    display: block;
+
+    margin-bottom: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+.note-content h3{
+    margin: 0 0 20px;
+    font-size: 24px;
+}
+.note-content p{
+    margin: 0 0 15px;
+    line-height: 1.6;
+    color: #cccccc;
+}
