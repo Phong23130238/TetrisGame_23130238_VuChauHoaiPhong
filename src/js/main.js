@@ -5,10 +5,6 @@ import GameUI from "./ui/gameUI.js";
 
 const ui = new GameUI();
 const game = new Game(ui);
-const piece = PieceFactory.createRandomPiece();
-const pieceUI = new PieceUI();
-const holdBoard = document.getElementById("hold-board");
-pieceUI.render(piece, holdBoard);
 game.start();
 
 document.addEventListener("keydown", (event) => {

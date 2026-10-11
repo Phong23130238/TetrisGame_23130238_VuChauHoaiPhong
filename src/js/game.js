@@ -69,7 +69,7 @@ export default class Game {
     }
 
     setSpawnPosition(piece) {
-        piece.x = Math.floor(COLS - piece.shape[0].length) / 2;
+        piece.x = Math.floor((COLS - piece.shape[0].length) / 2);
         piece.y = 0;
     }
 
@@ -133,7 +133,7 @@ export default class Game {
     }
 
     holdCurrentPiece(){
-        if(!this.canHold || this.isGameOver){
+        if(!this.currentPiece || !this.canHold || this.isPaused || this.isGameOver){
             return;
         }
         if(!this.holdPiece){
@@ -144,6 +144,10 @@ export default class Game {
             this.currentPiece = this.holdPiece;
             this.holdPiece = temp;
             this.setSpawnPosition(this.currentPiece);
+            if(!this.board.canPlace(this.currentPiece)){
+                this.endGame();
+                return;
+            }
         }
         this.canHold = false;
         this.render();
