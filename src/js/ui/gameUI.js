@@ -1,6 +1,5 @@
 import PieceUI from "./pieceUI.js";
 import BoardUI from "./boardUI.js";
-import pieces from "../config/pieces.js";
 
 export default class GameUI {
     constructor() {
@@ -20,24 +19,29 @@ export default class GameUI {
 
     render(game){
         this.boardUI.render(game.board, game.currentPiece);
-        this.renderHold = (game.holdPiece);
-        this.renderNext = (game.nextQueue);
-        this.updateScore = (game.score);
-        this.updateLevel = (game.level);
-        this.updateLines = (game.lines);
+        this.renderHold(game.holdPiece);
+        this.renderNext(game.nextQueue);
+        this.updateScore(game.score);
+        this.updateLevel(game.level);
+        this.updateLines(game.lines);
     }
 
     renderHold(piece){
-        if(piece){
-            this.pieceUI.render(piece, this.holdBoard);
+        if(!piece){
+            this.holdBoard.innerHTML = "";
             return;
         }
-        this.holdBoard.innerHTML = "";
+        this.pieceUI.render(piece, this.holdBoard);
     }
 
     renderNext(queue){
-        queue.forEach((piece, index) =>{
-            this.pieceUI.render(piece, this.nextBoards[index]);
+        this.nextBoards.forEach((container, index) => {
+           const piece = queue[index];
+           if(!piece){
+               container.innerHTML = "";
+               return;
+           }
+            this.pieceUI.render(piece, container);
         });
     }
 
