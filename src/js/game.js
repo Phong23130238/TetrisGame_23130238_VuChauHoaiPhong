@@ -94,12 +94,22 @@ export default class Game {
     }
 
     rotatePiece(){
-        const oldShape = this.currentPiece.shape;
-        const newShape = rotateMatrix(oldShape);
-        this.currentPiece.shape = newShape;
-        if(!this.board.canPlace(this.currentPiece)){
-            this.currentPiece.shape = oldShape;
+        if (!this.currentPiece || this.isPaused || this.isGameOver){
+            return;
         }
+        const oldShape = this.currentPiece.shape;
+        const oldX = this.currentPiece.x;
+        this.currentPiece.shape = rotateMatrix(oldShape);
+        const offsets = [0, -1, 1, -2, 2, -3, 3];
+        for(const offset of offsets){
+            this.currentPiece.x = oldX + offset;
+            if (this.board.canPlace(this.currentPiece)){
+                this.render();
+                return;
+            }
+        }
+        this.currentPiece.shape = oldShape;
+        this.currentPiece.x = oldX;
         this.render();
     }
 
