@@ -85,6 +85,7 @@ const gameState = {
     score: 0,
     lines: 0,
     level: 1,
+    selectedLevel:1,
     isPaused: false,
     isGameOver: false,
     timer: null
@@ -416,7 +417,7 @@ function resetGameState() {
     gameState.nextQueue = [];
     gameState.score = 0;
     gameState.lines = 0;
-    gameState.level = 1;
+    gameState.level = gameState.selectedLevel;
     gameState.isPaused = false;
     gameState.isGameOver = false;
 
@@ -464,6 +465,14 @@ function movePiece(offsetX, offsetY) {
         gameState.currentPiece.y += offsetY;
     }
     renderGame();
+}
+// màn 2
+function reverseButtons(direction){
+   let moveDirection = direction;
+   if(gameState.selectedLevel === 2){
+       moveDirection = -direction;
+   }
+   movePiece(moveDirection, 0);
 }
 
 function dropPiece() {
@@ -642,18 +651,14 @@ function initializeMenu() {
     renderHighScoreList();
     addClickEvent("play-button", () => {
         const selectedLevel = getSelectedLevel();
-        if (selectedLevel !== 1) {
-            alert("Hiện tại chỉ có Màn 1 được triển khai.");
-            return;
-        }
-        window.location.href = "./game.html";
+        window.location.href = `./game.html?level=${selectedLevel}`;
     });
     addClickEvent("settings-button", () => {
         try {
             sessionStorage.setItem("openSettingsOnStart", "true");
         } catch (error) {
         }
-        window.location.href = "./game.html";
+        window.location.href = `./game.html?level=${getSelectedLevel()}`;
     });
 }
 
@@ -663,12 +668,12 @@ function initializeGameControls() {
         switch (event.code) {
             case "ArrowLeft":
                 event.preventDefault();
-                movePiece(-1, 0);
+                reverseButtons(-1);
                 break;
 
             case "ArrowRight":
                 event.preventDefault();
-                movePiece(1, 0);
+                reverseButtons(1);
                 break;
 
             case "ArrowDown":
@@ -709,6 +714,13 @@ function initializeGameControls() {
 function initializeGamePage() {
     if (!gameBoardElement) {
         return;
+    }
+    const param = new URLSearchParams(window.location.search);
+    const requestedLevel = Number(param.get("level"));
+    if([1, 2, 3, 4, 5, 6].includes(requestedLevel)) {
+        gameState.selectedLevel = requestedLevel;
+    }else{
+        gameState.selectedLevel = 1;
     }
     initializeGameControls();
     startGame();
