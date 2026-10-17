@@ -678,12 +678,20 @@ function initializeGameControls() {
 
             case "ArrowDown":
                 event.preventDefault();
-                dropPiece();
+                if(gameState.selectedLevel === 2){
+                    rotateCurrentPiece();
+                }else {
+                    dropPiece();
+                }
                 break;
 
             case "ArrowUp":
                 event.preventDefault();
-                rotateCurrentPiece();
+                if (gameState.selectedLevel === 2) {
+                    dropPiece();
+                }else{
+                    rotateCurrentPiece();
+                }
                 break;
 
             case "Space":
