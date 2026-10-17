@@ -60,9 +60,17 @@ const LEVEL_NOTES = {
     1: {
         title: "TETRIS CƠ BẢN",
         paragraphs: [
-            "Các Tetromino ngẫu nhiên xuất hiện từ phía trên và rơi xuống phía dưới.",
-            "Người chơi có thể di chuyển khối sang trái, phải, xoay khối và thả khối xuống.",
-            "Khi một hàng có đủ 10 ô, hàng đó sẽ được xóa và các hàng phía trên sẽ rơi xuống."
+            "Các Khối ngẫu nhiên xuất hiện từ phía trên và rơi xuống phía dưới.",
+            "Người chơi di chuyển khối sang trái, phải, xoay khối và thả khối xuống.",
+            "Khi một hàng được lắp đầy, hàng đó sẽ được xóa và các hàng phía trên sẽ rơi xuống."
+        ]
+    },
+    2: {
+        title: "ĐẢO NGƯỢC DI CHUYỂN",
+        paragraphs: [
+            "Ở màn này, các logic tính điểm, ăn ô vẫn giống màn 1.",
+            "Tuy nhiên, các nút di chuyển của người chơi sẽ bị đảo lộn",
+            "Ví dụ: nút di chuyển trái khi ấn sẽ di chuyển sang phải, khiến độ khó màn chơi gia tăng"
         ]
     }
 };
@@ -514,16 +522,6 @@ function lockCurrentPiece() {
     }
 }
 
-function clearLinesAndUpdateScore() {
-    const clearedLines = clearFullLines();
-    if (clearedLines === 0) {
-        return;
-    }
-    const scoreByLines = [0, 100, 300, 500, 800];
-    gameState.lines += clearedLines;
-    gameState.score += scoreByLines[clearedLines] || 0;
-}
-
 function holdCurrentPiece() {
     if (!gameState.currentPiece || !gameState.canHold || gameState.isPaused || gameState.isGameOver) {
         return;
@@ -726,6 +724,32 @@ function initializeGamePage() {
         hideOverlay("pause-overlay");
         showOverlay("settings-overlay");
     }
+}
+
+// âm thanh
+const clearLineSound = new Audio("../sounds/clear-line.mp3");
+clearLineSound.volume = 0.6;
+
+function playClearLineSound(){
+    const soundSetting = document.querySelector(".sound-setting");
+    if(soundSetting && !soundSetting.checked){
+        return;
+    }
+    clearLineSound.currentTime = 0;
+    clearLineSound.play().catch(error =>{
+        console.warn("Không thể phát âm xóa hàng:", error);
+    });
+}
+
+function clearLinesAndUpdateScore(){
+    const clearedLines = clearFullLines();
+    if(clearedLines === 0){
+        return;
+    }
+    playClearLineSound();
+    const scoreByLines = [0, 100, 300, 500, 800];
+    gameState.lines += clearedLines;
+    gameState.score += scoreByLines[clearedLines] || 0;
 }
 
 initializeMenu();
