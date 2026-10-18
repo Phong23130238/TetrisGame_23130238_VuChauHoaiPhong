@@ -58,7 +58,7 @@ const PIECES = {
 // hd từng levels
 const LEVEL_NOTES = {
     1: {
-        title: "TETRIS CƠ BẢN",
+        title: "LV1 - TETRIS CƠ BẢN",
         paragraphs: [
             "Các Khối ngẫu nhiên xuất hiện từ phía trên và rơi xuống phía dưới.",
             "Người chơi di chuyển khối sang trái, phải, xoay khối và thả khối xuống.",
@@ -66,11 +66,19 @@ const LEVEL_NOTES = {
         ]
     },
     2: {
-        title: "ĐẢO NGƯỢC DI CHUYỂN",
+        title: "LV2 - ĐẢO NGƯỢC DI CHUYỂN",
         paragraphs: [
             "Ở màn này, các logic tính điểm, ăn ô vẫn giống màn 1.",
             "Tuy nhiên, các nút di chuyển của người chơi sẽ bị đảo lộn",
             "Ví dụ: nút di chuyển trái khi ấn sẽ di chuyển sang phải, khiến độ khó màn chơi gia tăng"
+        ]
+    },
+    3:  {
+        title: "LV3 - BÀN CỜ ẨN",
+        paragraphs: [
+            "Trong màn này, khối đã rơi xuống và khóa chỉ hiển thị trong 3 giây sau đó bị ẩn đi.",
+            "Để hiển thị các khối trước đó người chơi cần:",
+            "-Xóa hàng, bàn cờ hiện lại trong 2 giây. Hard Drop khóa khối, bàn cờ hiện lại trong 1,5 giây."
         ]
     }
 };
@@ -88,7 +96,11 @@ const gameState = {
     selectedLevel:1,
     isPaused: false,
     isGameOver: false,
-    timer: null
+    timer: null,
+// 3
+    boardVisibleUntil: [],
+    displayBoardUntil: 0,
+    visibilityTimer: null
 };
 
 const gameBoardElement = document.getElementById("game-board");
@@ -115,6 +127,11 @@ function createRandomPiece() {
 
 function createEmptyBoard() {
     return Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+}
+
+// 3
+function createEmptyVisibilityBoard(){
+    return Array.from({ length: ROWS }, () => Array(COLS).fill(0));
 }
 
 function rotateMatrix(matrix) {
@@ -155,6 +172,7 @@ function canPlacePiece(piece, offsetX = 0, offsetY = 0) {
 }
 
 function mergePiece(piece) {
+    const visibleUntil = Date.now() + 1500;
     for (let row = 0; row < piece.shape.length; row++) {
         for (let col = 0; col < piece.shape[row].length; col++) {
             if (piece.shape[row][col] === 0) {
@@ -162,20 +180,33 @@ function mergePiece(piece) {
             }
             const x = piece.x + col;
             const y = piece.y + row;
-            if (x >= 0 && x < COLS && y >= 0 && y < ROWS) {
-                gameState.board[y][x] = piece.color;
+            if (x < 0 && x >= COLS && y < 0 && y >= ROWS) {
+                continue;
+            }
+            gameState.board[y][x] = piece.color;
+            if (gameState.selectedLevel === 3){
+                gameState.boardVisibleUntil[y][x] = visibleUntil;
+            }else{
+                gameState.boardVisibleUntil[y][x] = 0;
             }
         }
     }
 }
 
 function clearFullLines() {
-    const remainingRows = gameState.board.filter(row => row.some(cell => cell === null));
-    const clearedLines = ROWS - remainingRows.length;
-    while (remainingRows.length < ROWS) {
-        remainingRows.unshift(Array(COLS).fill(null));
+    const remainingRows = [];
+    for(let row = 0; row < ROWS; row++) {
+        if (gameState.board[row].some(cell => cell === null)){
+            remainingRows.push(row);
+        }
     }
-    gameState.board = remainingRows;
+    const clearedLines = ROWS - remainingRows.length;
+    gameState.board = remainingRows.map(row => gameState.board[row]);
+    gameState.boardVisibleUntil = remainingRows.map(row => gameState.boardVisibleUntil[row]);
+    while(gameState.board.length < ROWS){
+        gameState.board.unshift(Array(COLS).fill(null));
+        gameState.boardVisibleUntil.unshift(Array(COLS).fill(0));
+    }
     return clearedLines;
 }
 
@@ -217,13 +248,23 @@ function createBoardCells() {
 }
 
 function renderBoard() {
+    const now = Date.now();
     for (let row = 0; row < ROWS; row++) {
         for (let col = 0; col < COLS; col++) {
             const index = row * COLS + col;
             const cell = gameState.cells[index];
-            if (cell) {
-                cell.style.backgroundColor = gameState.board[row][col] || "";
+            if(!cell){
+                continue;
             }
+            const color = gameState.board[row][col];
+            let shouldShow = true;
+            if(gameState.selectedLevel === 3 && color !== null){
+                const visibleUntil = gameState.boardVisibleUntil[row][col] || 0;
+                const temporaryVisible = now < visibleUntil;
+                const boardDisplay = now < gameState.displayBoardUntil;
+                shouldShow = temporaryVisible || boardDisplay;
+            }
+            cell.style.backgroundColor = color !== null && shouldShow ? color : "";
         }
     }
 }
@@ -317,6 +358,49 @@ function renderGame() {
     renderHoldPiece();
     renderNextPieces();
     updateGameInformation();
+}
+
+// 3
+
+function scheduleVisibleRefresh(){
+    if(gameState.visibilityTimer){
+        clearTimeout(gameState.visibilityTimer);
+        gameState.visibilityTimer = null;
+    }
+    if(gameState.selectedLevel !== 3 || !gameBoardElement){
+        return;
+    }
+    const now = Date.now();
+    let nextUpdateTime = gameState.displayBoardUntil > now ? gameState.displayBoardUntil : Infinity;
+    for(let row = 0; row <ROWS; row++) {
+        for (let col = 0; col < COLS; col++) {
+            if (gameState.board[row][col] === 0) {
+                continue;
+            }
+            const visibleUntil = gameState.boardVisibleUntil[row][col];
+            if(visibleUntil > now && visibleUntil < nextUpdateTime){
+                nextUpdateTime = visibleUntil;
+            }
+        }
+    }
+    if (nextUpdateTime === Infinity) {
+        return;
+    }
+    const delay = Math.max(0, nextUpdateTime - Date.now());
+    gameState.visibilityTimer = window.setTimeout(() => {
+        gameState.visibilityTimer = null;
+        renderGame();
+        scheduleVisibleRefresh();
+    }   , delay);
+}
+
+function displayLockedBoard(duration){
+    if (gameState.selectedLevel !== 3){
+        return;
+    }
+    const newVisibleUntil = Date.now() + duration;
+    gameState.displayBoardUntil = Math.max(gameState.displayBoardUntil, newVisibleUntil);
+    scheduleVisibleRefresh();
 }
 
 function showOverlay(id) {
@@ -424,6 +508,14 @@ function resetGameState() {
     hideOverlay("pause-overlay");
     hideOverlay("settings-overlay");
     hideOverlay("game-over-overlay");
+
+    // 3
+    if(gameState.visibilityTimer !== null){
+        clearTimeout(gameState.visibilityTimer);
+        gameState.visibilityTimer = null;
+    }
+    gameState.boardVisibleUntil = createEmptyVisibilityBoard();
+    gameState.displayBoardUntil = 0;
 }
 
 function startDropLoop() {
@@ -515,17 +607,21 @@ function hardDrop() {
     while (canPlacePiece(gameState.currentPiece, 0, 1)) {
         gameState.currentPiece.y++;
     }
-    lockCurrentPiece();
+    lockCurrentPiece(true);
 }
 
-function lockCurrentPiece() {
+function lockCurrentPiece(isHardDrop = false) {
     if (!gameState.currentPiece || gameState.isGameOver) {
         return;
     }
     mergePiece(gameState.currentPiece);
     clearLinesAndUpdateScore();
+    if(isHardDrop){
+        displayLockedBoard(1500);
+    }
     gameState.canHold = true;
     spawnNextPiece();
+    scheduleVisibleRefresh();
     if (!gameState.isGameOver) {
         renderGame();
     }
@@ -766,6 +862,7 @@ function clearLinesAndUpdateScore(){
     if(clearedLines === 0){
         return;
     }
+    displayLockedBoard(2000);
     playClearLineSound();
     const scoreByLines = [0, 100, 300, 500, 800];
     gameState.lines += clearedLines;
