@@ -74,11 +74,20 @@ const LEVEL_NOTES = {
         ]
     },
     3:  {
-        title: "LV3 - BÀN CỜ ẨN",
+        title: "LV3 - KHỐI TÀNG HÌNH",
         paragraphs: [
-            "Trong màn này, khối đã rơi xuống và khóa chỉ hiển thị trong 3 giây sau đó bị ẩn đi.",
+            "Trong màn này, khối đã rơi xuống và khóa chỉ hiển thị trong 1,5 giây sau đó bị ẩn đi.",
             "Để hiển thị các khối trước đó người chơi cần:",
             "-Xóa hàng, bàn cờ hiện lại trong 2 giây. Hard Drop khóa khối, bàn cờ hiện lại trong 1,5 giây."
+        ]
+    },
+    4: {
+        title: "LV4 - RÁC TRỒI LÊN & TỰ ĐỘNG XOAY",
+        paragraphs: [
+            "Sau mỗi 4 giây không xóa được hàng, một hàng rác sẽ trồi lên từ đáy bàn cờ. Hàng rác có một ô trống ngẫu nhiên và đẩy các hàng phía trên lên.",
+            "Khối đang rơi tự xoay theo chiều kim đồng hồ sau mỗi 0,5 giây. Người chơi không thể xoay khối thủ công.",
+            "Người chơi có thể di chuyển khối sang trái/phải, tăng tốc độ rơi bằng phím xuống và thả khối nhanh bằng Space. Xóa ít nhất một hàng sẽ đặt lại bộ đếm rác.",
+            "Tránh để các khối bị đẩy vượt khỏi đỉnh bàn cờ hoặc khiến bạn không còn vị trí hợp lệ để tiếp tục."
         ]
     }
 };
@@ -100,7 +109,11 @@ const gameState = {
 // 3
     boardVisibleUntil: [],
     displayBoardUntil: 0,
-    visibilityTimer: null
+    visibilityTimer: null,
+// 4
+    garbageTimer: null,
+    autoRotateTimer: null,
+    lastLineClearTime: 0
 };
 
 const gameBoardElement = document.getElementById("game-board");
@@ -147,6 +160,114 @@ function addClickEvent(id, callback) {
     if (element) {
         element.addEventListener("click", callback);
     }
+}
+
+// 4
+// cơ chế 1_ hàng rác
+function createGarbageRow(){
+    const emptyCol = Math.floor(Math.random() * COLS);
+    return Array.from({length: COLS}, (_, col) => col === emptyCol ? null : "#777777");
+}
+
+function addGarbageRow(){
+    if(gameState.selectedLevel !== 4 || gameState.isPaused || gameState.isGameOver){
+        return;
+    }
+    const removedRow = gameState.board.shift();
+    gameState.boardVisibleUntil.shift();
+    gameState.board.push(createGarbageRow());
+    gameState.boardVisibleUntil.push(Array(COLS).fill(0));
+    if(removedRow.some(cell => cell !== null)){
+        renderGame();
+        endGame();
+        return;
+    }
+    if(gameState.currentPiece && !canPlacePiece(gameState.currentPiece)) {
+        while(gameState.currentPiece.y > -gameState.currentPiece.shape.length && !canPlacePiece(gameState.currentPiece)){
+            gameState.currentPiece.y--;
+        }
+        if(!canPlacePiece(gameState.currentPiece)){
+            renderGame();
+            endGame();
+            return;
+        }
+    }
+    renderGame();
+}
+
+function startGarbageTimer(){
+    stopGarbageTimer();
+    gameState.lastLineClearTime = Date.now();
+    gameState.garbageTimer = window.setInterval(() => {
+        if(gameState.selectedLevel !== 4 || gameState.isPaused || gameState.isGameOver){
+            return;
+        }
+        const elapsed = Date.now() - gameState.lastLineClearTime;
+        if(elapsed >= 4000){
+            addGarbageRow();
+            gameState.lastLineClearTime = Date.now();
+        }
+    }, 100);
+}
+
+function stopGarbageTimer(){
+    if(gameState.garbageTimer !== null){
+        clearInterval(gameState.garbageTimer);
+        gameState.garbageTimer = null;
+    }
+}
+
+// cơ chế 2_tự rotate
+function autoRotatePiece(){
+    if(gameState.selectedLevel !== 4 || gameState.isPaused || gameState.isGameOver || !gameState.currentPiece){
+        return;
+    }
+    const piece = gameState.currentPiece;
+    const oldShape = piece.shape;
+    const oldX = piece.x;
+    const oldY = piece.y;
+    piece.shape = rotateMatrix(oldShape);
+    const offsets = [[0, 0], [-1, 0], [1, 0], [-2, 0], [2,0], [0, -1]];
+    for(const [offsetX, offsetY] of offsets){
+        piece.x = oldX + offsetX;
+        piece.y = oldY + offsetY;
+        if(canPlacePiece(piece)){
+            renderGame();
+            return;
+        }
+        piece.shape = oldShape;
+        piece.x = oldX;
+        piece.y = oldY;
+        renderGame();
+    }
+}
+
+function startAutoRotateTimer(){
+    stopAutoRotateTimer();
+    if(gameState.selectedLevel !== 4){
+        return;
+    }
+    gameState.autoRotateTimer = window.setInterval(() => {
+        autoRotatePiece();
+    }, 500);
+}
+
+function stopAutoRotateTimer(){
+    if(gameState.autoRotateTimer !== null){
+        clearTimeout(gameState.autoRotateTimer);
+        gameState.autoRotateTimer = null;
+    }
+}
+
+function scheduleAutoRotate(){
+    stopAutoRotateTimer();
+    if(gameState.selectedLevel !== 4 || gameState.isPaused || gameState.isGameOver){
+        return;
+    }
+    gameState.autoRotateTimer = window.setTimeout(() => {
+        autoRotatePiece();
+        scheduleAutoRotate();
+    }, 500);
 }
 
 function canPlacePiece(piece, offsetX = 0, offsetY = 0) {
@@ -227,6 +348,9 @@ function spawnNextPiece() {
     setSpawnPosition(gameState.currentPiece);
     if (!canPlacePiece(gameState.currentPiece)) {
         endGame();
+    }
+    if(gameState.selectedLevel === 4){
+        scheduleAutoRotate();
     }
 }
 
@@ -361,7 +485,6 @@ function renderGame() {
 }
 
 // 3
-
 function scheduleVisibleRefresh(){
     if(gameState.visibilityTimer){
         clearTimeout(gameState.visibilityTimer);
@@ -546,6 +669,10 @@ function startGame() {
     if (!gameState.isGameOver) {
         startDropLoop();
     }
+    if(gameState.selectedLevel === 4 && !gameState.isGameOver) {
+        startGarbageTimer();
+        scheduleAutoRotate();
+    }
 }
 
 function movePiece(offsetX, offsetY) {
@@ -558,7 +685,7 @@ function movePiece(offsetX, offsetY) {
     }
     renderGame();
 }
-// màn 2
+//2
 function reverseButtons(direction){
    let moveDirection = direction;
    if(gameState.selectedLevel === 2){
@@ -658,12 +785,18 @@ function togglePause() {
     gameState.isPaused = !gameState.isPaused;
     if (gameState.isPaused) {
         stopDropLoop();
+        stopGarbageTimer();
+        stopAutoRotateTimer();
         showOverlay("pause-overlay");
         return;
     }
     hideOverlay("pause-overlay");
     hideOverlay("settings-overlay");
     startDropLoop();
+    if(gameState.selectedLevel === 4){
+        startGarbageTimer();
+        scheduleAutoRotate();
+    }
 }
 
 function endGame() {
@@ -672,6 +805,8 @@ function endGame() {
     }
     gameState.isGameOver = true;
     stopDropLoop();
+    stopGarbageTimer();
+    stopAutoRotateTimer();
     saveHighScore(gameState.score);
     renderHighScoreList();
     renderGameOverScores();
@@ -783,10 +918,12 @@ function initializeGameControls() {
 
             case "ArrowUp":
                 event.preventDefault();
-                if (gameState.selectedLevel === 2) {
-                    dropPiece();
-                }else{
-                    rotateCurrentPiece();
+                if(gameState.selectedLevel !== 4) {
+                    if (gameState.selectedLevel === 2) {
+                        dropPiece();
+                    } else {
+                        rotateCurrentPiece();
+                    }
                 }
                 break;
 
@@ -861,6 +998,9 @@ function clearLinesAndUpdateScore(){
     const clearedLines = clearFullLines();
     if(clearedLines === 0){
         return;
+    }
+    if(gameState.selectedLevel === 4){
+        gameState.lastLineClearTime = Date.now();
     }
     displayLockedBoard(2000);
     playClearLineSound();
