@@ -5,7 +5,7 @@ const DROP_INTERVAL = 700;
 const NEXT_COUNT = 3;
 const PREVIEW_SIZE = 4;
 const HIGH_SCORE_KEY = "tetrisHighScores";
-
+const GRAY_COLOR = "#858585";
 // màu
 const COLORS = [
     "#FD3F59",
@@ -89,6 +89,15 @@ const LEVEL_NOTES = {
             "Người chơi có thể di chuyển khối sang trái/phải, tăng tốc độ rơi bằng phím xuống và thả khối nhanh bằng Space. Xóa ít nhất một hàng sẽ đặt lại bộ đếm rác.",
             "Tránh để các khối bị đẩy vượt khỏi đỉnh bàn cờ hoặc khiến bạn không còn vị trí hợp lệ để tiếp tục."
         ]
+    },
+    5: {
+        title: "LV5 - KHỐI CÙNG MÀU",
+        paragraphs: [
+            "Các khối Color và Gray xuất hiện luân phiên; khối xám có thể hấp thụ màu khi tiếp xúc theo khối có màu khác.",
+            "Chỉ hàng đầy gồm 10 ô cùng màu hợp lệ mới được xóa.",
+            "Hàng đầy sai màu có thể được giải cứu khi người chơi xóa hàng giống màu trùng màu mục tiêu. Mỗi hàng chỉ có một cơ hội giải cứu.",
+            "Màu mục tiêu: nếu 1 hàng đã đầy nhưng có 2 hoặc nhiều màu khác nhau trong cùng hàng, màu chiếm số lượng ô ít nhất là màu mục tiêu."
+        ]
     }
 };
 // tthai game
@@ -113,7 +122,13 @@ const gameState = {
 // 4
     garbageTimer: null,
     autoRotateTimer: null,
-    lastLineClearTime: 0
+    lastLineClearTime: 0,
+// 5
+    boardPieceIds: [],
+    boardGreyCells: [],
+    rescueRows: [],
+    nextPieceIsGray: null,
+    nextPieceId: 0
 };
 
 const gameBoardElement = document.getElementById("game-board");
@@ -134,12 +149,43 @@ function createRandomPiece() {
         shape: shape,
         color: color,
         x: 0,
-        y: 0
+        y: 0,
+        pieceId: ++gameState.nextPieceId,
+        isGray: false
     };
+}
+
+// 5
+function createPieceForCurrentLevel(){
+    const piece = createRandomPiece();
+    if(gameState.selectedLevel !== 5){
+        return piece;
+    }
+    if(gameState.nextPieceIsGray === null){
+        gameState.nextPieceIsGray = Math.random() < 0.5;
+    }
+    piece.isGray = gameState.nextPieceIsGray;
+    if(piece.isGray){
+        piece.color = GRAY_COLOR;
+    }
+    gameState.nextPieceIsGray = !gameState.nextPieceIsGray;
+    return piece;
 }
 
 function createEmptyBoard() {
     return Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+}
+// 5
+function createEmptyPieceIdBoard(){
+    return Array.from({length : ROWS}, () => Array(COLS).fill(null));
+}
+
+function createEmptyGreyBoard(){
+    return Array.from({length : ROWS}, () => Array(COLS).fill(false));
+}
+
+function createEmptyRescueRow(){
+    return Array(ROWS).fill(null);
 }
 
 // 3
@@ -175,8 +221,14 @@ function addGarbageRow(){
     }
     const removedRow = gameState.board.shift();
     gameState.boardVisibleUntil.shift();
+    gameState.boardPieceIds.shift();
+    gameState.boardGreyCells.shift();
+    gameState.rescueRows.shift();
     gameState.board.push(createGarbageRow());
     gameState.boardVisibleUntil.push(Array(COLS).fill(0));
+    gameState.boardPieceIds.push(Array(COLS).fill(null));
+    gameState.boardGreyCells.push(Array(COLS).fill(false));
+    gameState.rescueRows.push(null);
     if(removedRow.some(cell => cell !== null)){
         renderGame();
         endGame();
@@ -301,20 +353,21 @@ function mergePiece(piece) {
             }
             const x = piece.x + col;
             const y = piece.y + row;
-            if (x < 0 && x >= COLS && y < 0 && y >= ROWS) {
+            if (x < 0 || x >= COLS || y < 0 || y >= ROWS) {
                 continue;
             }
             gameState.board[y][x] = piece.color;
-            if (gameState.selectedLevel === 3){
-                gameState.boardVisibleUntil[y][x] = visibleUntil;
-            }else{
-                gameState.boardVisibleUntil[y][x] = 0;
-            }
+            gameState.boardPieceIds[y][x] = piece.pieceId;
+            gameState.boardGreyCells[y][x] = gameState.selectedLevel === 5 && piece.isGray;
+            gameState.boardVisibleUntil[y][x] = gameState.selectedLevel === 3 ? visibleUntil : 0;
         }
     }
 }
 
 function clearFullLines() {
+    if(gameState.selectedLevel === 5){
+        return clearFullLinesLevel5();
+    }
     const remainingRows = [];
     for(let row = 0; row < ROWS; row++) {
         if (gameState.board[row].some(cell => cell === null)){
@@ -324,11 +377,104 @@ function clearFullLines() {
     const clearedLines = ROWS - remainingRows.length;
     gameState.board = remainingRows.map(row => gameState.board[row]);
     gameState.boardVisibleUntil = remainingRows.map(row => gameState.boardVisibleUntil[row]);
+    gameState.boardPieceIds = remainingRows.map(row => gameState.boardPieceIds[row]);
+    gameState.boardGreyCells = remainingRows.map(row => gameState.boardGreyCells[row]);
+    gameState.rescueRows = remainingRows.map(row => gameState.rescueRows[row]);
     while(gameState.board.length < ROWS){
         gameState.board.unshift(Array(COLS).fill(null));
         gameState.boardVisibleUntil.unshift(Array(COLS).fill(0));
+        gameState.boardPieceIds.unshift(Array(COLS).fill(null));
+        gameState.boardGreyCells.unshift(Array(COLS).fill(false));
+        gameState.rescueRows.unshift(null);
     }
     return clearedLines;
+}
+// 5
+function isSameColorRow(row){
+    const cells = gameState.board[row];
+    if(cells.some(color => color === null)){
+        return false;
+    }
+    if(cells.some((color, col) => gameState.boardGreyCells[row][col] || !COLORS.includes(color))){
+        return false;
+    }
+    return cells.every(color => color === cells[0]);
+}
+
+function getRescueTargetColors(row){
+    const cells = gameState.board[row];
+    if(cells.some(color => color === null) || cells.some((color, col) => gameState.boardGreyCells[row][col] || !COLORS.includes(color))){
+        return null;
+    }
+    const counts = new Map();
+    for(const color of cells){
+        counts.set(color, (counts.get(color) || 0) + 1);
+    }
+    if(counts.size <= 1){
+        return null;
+    }
+    const minimum = Math.min(...counts.values());
+    return COLORS.filter(color => counts.has(color) && counts.get(color) === minimum);
+}
+
+function clearFullLinesLevel5(){
+    const clearRows = [];
+    for(let row = 0; row < ROWS; row++) {
+        if(isSameColorRow(row)){
+            clearRows.push(row);
+        }
+    }
+    const clearedColors = clearRows.map(row => gameState.board[row][0]);
+    const clearSet = new Set(clearRows);
+    if(clearRows.length > 0){
+        for(let row = 0; row < ROWS; row++) {
+            const rescue = gameState.rescueRows[row];
+            if(!rescue || rescue.status !== "pending"){
+                continue;
+            }
+            const matchingColors = [...new Set(clearedColors.filter(color => rescue.targetColors.includes(color)))];
+            if(matchingColors.length > 0){
+                for(let col = 0; col < COLS; col++) {
+                    if(matchingColors.includes(gameState.board[row][col])){
+                        gameState.board[row][col] = null;
+                        gameState.boardPieceIds[row][col] = null;
+                        gameState.boardGreyCells[row][col] = false;
+                    }
+                }
+                gameState.rescueRows[row] = null;
+            }else{
+                gameState.rescueRows[row] = {status: 'expired', targetColors: rescue.targetColors.slice()};
+            }
+        }
+    }
+    const remainingRows = [];
+    for(let row = 0; row < ROWS; row++) {
+        if(!clearSet.has(row)){
+            remainingRows.push(row);
+        }
+    }
+    gameState.board = remainingRows.map(row => gameState.board[row]);
+    gameState.boardPieceIds = remainingRows.map(row => gameState.boardPieceIds[row]);
+    gameState.boardGreyCells = remainingRows.map(row => gameState.boardGreyCells[row]);
+    gameState.boardVisibleUntil = remainingRows.map(row => gameState.boardVisibleUntil[row]);
+    gameState.rescueRows = remainingRows.map(row => gameState.rescueRows[row]);
+    while(gameState.board.length < ROWS){
+        gameState.board.unshift(Array(COLS).fill(null));
+        gameState.boardPieceIds.unshift(Array(COLS).fill(null));
+        gameState.boardGreyCells.unshift(Array(COLS).fill(false));
+        gameState.boardVisibleUntil.unshift(Array(COLS).fill(0));
+        gameState.rescueRows.unshift(null);
+    }
+    for(let row = 0; row < ROWS; row++) {
+        if(gameState.rescueRows[row] !== null){
+            continue;
+        }
+        const targets = getRescueTargetColors(row);
+        if(targets !== null){
+            gameState.rescueRows[row] = {status: 'pending', targetColors: targets};
+        }
+    }
+    return clearRows.length;
 }
 
 function setSpawnPosition(piece) {
@@ -338,19 +484,108 @@ function setSpawnPosition(piece) {
 
 function fillNextQueue() {
     while (gameState.nextQueue.length < NEXT_COUNT) {
-        gameState.nextQueue.push(createRandomPiece());
+        gameState.nextQueue.push(createPieceForCurrentLevel());
     }
 }
 
 function spawnNextPiece() {
+    fillNextQueue();
     gameState.currentPiece = gameState.nextQueue.shift();
-    gameState.nextQueue.push(createRandomPiece());
+    gameState.nextQueue.push(createPieceForCurrentLevel());
+    if (!gameState.currentPiece || !gameState.currentPiece.shape) {
+        console.error("Không thể tạo khối mới:", gameState.currentPiece);
+        endGame();
+        return;
+    }
     setSpawnPosition(gameState.currentPiece);
     if (!canPlacePiece(gameState.currentPiece)) {
         endGame();
+        return;
     }
     if(gameState.selectedLevel === 4){
         scheduleAutoRotate();
+    }
+}
+// 5
+function processColorAbsortion() {
+    if (gameState.selectedLevel !== 5) {
+        return;
+    }
+    const piece = gameState.currentPiece;
+    if (!piece) {
+        return;
+    }
+    if (piece.isGray) {
+        const colorCounts = new Map();
+        for (let row = 0; row < piece.shape.length; row++) {
+            for (let col = 0; col < piece.shape[row].length; col++) {
+                if (piece.shape[row][col] === 0) {
+                    continue;
+                }
+                const x = piece.x + col;
+                const y = piece.y + row;
+                const neighbors = [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]];
+                for (const [nx, ny] of neighbors) {
+                    if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) {
+                        continue;
+                    }
+                    const neighborColor = gameState.board[ny][nx];
+                    const isNeighborGray = gameState.boardGreyCells[ny][nx];
+                    if (neighborColor !== null && !isNeighborGray && COLORS.includes(neighborColor)) {
+                        const count = colorCounts.get(neighborColor) || 0;
+                        colorCounts.set(neighborColor, count + 1);
+                    }
+                }
+            }
+        }
+
+        let selectedColor = null;
+        let highestCount = 0;
+        for (const color of COLORS) {
+            const count = colorCounts.get(color) || 0;
+            if (count > highestCount) {
+                highestCount = count;
+                selectedColor = color;
+            }
+        }
+        if (selectedColor !== null) {
+            piece.color = selectedColor;
+            piece.isGray = false;
+        }
+    }
+    if (!piece.isGray) {
+        const touchedGreyPieceIds = new Set();
+        for (let row = 0; row < piece.shape.length; row++) {
+            for (let col = 0; col < piece.shape[row].length; col++) {
+                if(piece.shape[row][col] === 0) {
+                    continue;
+                }
+                const x = piece.x + col;
+                const y = piece.y + row;
+                const neighbors = [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]];
+                for (const [nx, ny] of neighbors) {
+                    if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) {
+                        continue;
+                    }
+                    const neighborPieceId  = gameState.boardPieceIds[ny][nx];
+                    const isNeighborGray = gameState.boardGreyCells[ny][nx];
+                    if (isNeighborGray && neighborPieceId !== null) {
+                        touchedGreyPieceIds.add(neighborPieceId);
+                    }
+                }
+            }
+        }
+        if(touchedGreyPieceIds.size > 0) {
+            for(let row = 0; row < ROWS; row++) {
+                for (let col = 0; col < COLS; col++) {
+                    const pieceId = gameState.boardPieceIds[row][col];
+                    if(touchedGreyPieceIds.has(pieceId) && gameState.boardGreyCells[row][col]) {
+                        gameState.board[row][col] = piece.color;
+                        gameState.boardGreyCells[row][col] = false;
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -398,7 +633,6 @@ function renderCurrentPiece() {
     if (!piece) {
         return;
     }
-
     for (let row = 0; row < piece.shape.length; row++) {
         for (let col = 0; col < piece.shape[row].length; col++) {
             if (piece.shape[row][col] === 0) {
@@ -627,6 +861,12 @@ function resetGameState() {
     gameState.level = gameState.selectedLevel;
     gameState.isPaused = false;
     gameState.isGameOver = false;
+// 5
+    gameState.boardPieceIds = createEmptyBoard();
+    gameState.boardGreyCells = createEmptyGreyBoard();
+    gameState.rescueRows = createEmptyRescueRow();
+    gameState.nextPieceIsGray = null;
+    gameState.nextPieceId = 0;
 
     hideOverlay("pause-overlay");
     hideOverlay("settings-overlay");
@@ -683,6 +923,7 @@ function movePiece(offsetX, offsetY) {
         gameState.currentPiece.x += offsetX;
         gameState.currentPiece.y += offsetY;
     }
+    processColorAbsortion();
     renderGame();
 }
 //2
@@ -700,6 +941,7 @@ function dropPiece() {
     }
     if (canPlacePiece(gameState.currentPiece, 0, 1)) {
         gameState.currentPiece.y++;
+        processColorAbsortion();
         renderGame();
         return;
     }
@@ -724,6 +966,7 @@ function rotateCurrentPiece() {
     }
     piece.shape = oldShape;
     piece.x = oldX;
+    processColorAbsortion();
     renderGame();
 }
 
@@ -741,6 +984,7 @@ function lockCurrentPiece(isHardDrop = false) {
     if (!gameState.currentPiece || gameState.isGameOver) {
         return;
     }
+    processColorAbsortion();
     mergePiece(gameState.currentPiece);
     clearLinesAndUpdateScore();
     if(isHardDrop){
