@@ -420,3 +420,23 @@ button{
 .more-games-button:hover {
     background-color: #45B837;
 }
+
+/*Khiên lv6*/
+.board-cell.shielded-cell {
+    outline: 2px solid var(--shield-color);
+    outline-offset: -2px;
+
+    box-shadow:
+            inset 0 0 5px var(--shield-color),
+            0 0 7px var(--shield-color);
+}
+.board-cell.shielded-cell {
+    --shield-color: #ffffff;
+
+    outline: 2px solid var(--shield-color, #ffffff);
+    outline-offset: -2px;
+
+    box-shadow:
+            inset 0 0 5px var(--shield-color, #ffffff),
+            0 0 7px var(--shield-color, #ffffff);
+}
