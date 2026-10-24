@@ -61,14 +61,57 @@
         <div id="pause-overlay" class="game-overlay hidden">
             <div class="overlay-panel">
                 <h2>ĐÃ TẠM DỪNG</h2>
-
                 <button id="resume-button" class="game-action-button resume-button" type="button">TIẾP TỤC</button>
-
+                <button id="pause-replay-button" class="game-action-button" type="button"><i class="fa-solid fa-rotate-left"></i>CHƠI LẠI</button>
+                <button id="hack-level-button" class="game-action-button" type="button"><i class="fa-solid fa-list-ol"></i>CHỌN LEVEL</button>
                 <button id="pause-settings-button" class="game-action-button" type="button">
                     <i class="fa-solid fa-gear"><span>CÀI ĐẶT</span></i>
                 </button>
-
                 <button id="exit-button" class="game-action-button exit-button" type="button">THOÁT</button>
+            </div>
+        </div>
+
+        <div id="hack-level-overlay" class="game-overlay hidden">
+            <div class="overlay-panel">
+                <h2>CHỌN MÀN</h2>
+
+                <div class="hack-level-list">
+                    <button class="game-action-button hack-level-option"
+                            data-level="1">
+                        MÀN 1
+                    </button>
+
+                    <button class="game-action-button hack-level-option"
+                            data-level="2">
+                        MÀN 2
+                    </button>
+
+                    <button class="game-action-button hack-level-option"
+                            data-level="3">
+                        MÀN 3
+                    </button>
+
+                    <button class="game-action-button hack-level-option"
+                            data-level="4">
+                        MÀN 4
+                    </button>
+
+                    <button class="game-action-button hack-level-option"
+                            data-level="5">
+                        MÀN 5
+                    </button>
+
+                    <button class="game-action-button hack-level-option"
+                            data-level="6">
+                        MÀN 6
+                    </button>
+                </div>
+
+                <button id="hack-level-back-button"
+                        class="game-action-button"
+                        type="button">
+                    QUAY LẠI
+                </button>
             </div>
         </div>
 
@@ -128,6 +171,42 @@
             </div>
         </div>
     </main>
+
+    <div id="level-complete-overlay" class="game-overlay hidden">
+        <div class="overlay-panel">
+            <h2>CHÚC MỪNG BẠN!</h2>
+
+            <p>Bạn đã hoàn thành level này.</p>
+
+            <button id="complete-home-button"
+                    class="game-action-button"
+                    type="button">
+                <i class="fa-solid fa-house"></i>
+                VỀ TRANG CHỦ
+            </button>
+
+            <button id="complete-replay-button"
+                    class="game-action-button"
+                    type="button">
+                <i class="fa-solid fa-rotate-left"></i>
+                CHƠI LẠI MÀN NÀY
+            </button>
+
+            <button id="next-level-button"
+                    class="game-action-button"
+                    type="button">
+                <i class="fa-solid fa-arrow-right"></i>
+                MÀN TIẾP THEO
+            </button>
+
+            <button id="complete-hack-level-button"
+                    class="game-action-button"
+                    type="button">
+                <i class="fa-solid fa-list-ol"></i>
+                CHỌN LEVEL
+            </button>
+        </div>
+    </div>
 
     <script type="module" src="/src/js/main.js"></script>
 </body>

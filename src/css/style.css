@@ -440,3 +440,32 @@ button{
             inset 0 0 5px var(--shield-color, #ffffff),
             0 0 7px var(--shield-color, #ffffff);
 }
+/*Chọn màn*/
+.hack-level-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+    margin-top: 10px;
+}
+
+.hack-level-option {
+    width: 100%;
+    min-width: 0;
+    margin-top: 0;
+    padding: 12px 8px;
+}
+#hack-level-overlay .overlay-panel,
+#level-complete-overlay .overlay-panel {
+    max-height: 85vh;
+    overflow-y: auto;
+}
+.game-action-button:disabled {
+    background-color: #555;
+    opacity: 0.6;
+    cursor: not-allowed;
+}.game-action-button:disabled {
+     background-color: #555;
+     opacity: 0.6;
+     cursor: not-allowed;
+ }
