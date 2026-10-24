@@ -5,7 +5,11 @@ const DROP_INTERVAL = 700;
 const NEXT_COUNT = 3;
 const PREVIEW_SIZE = 4;
 const HIGH_SCORE_KEY = "tetrisHighScores";
+// 5
 const GRAY_COLOR = "#858585";
+// 6
+const SHIELD_DELAY = 3000;
+const SHIELD_TICK = 100;
 // màu
 const COLORS = [
     "#FD3F59",
@@ -98,6 +102,15 @@ const LEVEL_NOTES = {
             "Hàng đầy sai màu có thể được giải cứu khi người chơi xóa hàng giống màu trùng màu mục tiêu. Mỗi hàng chỉ có một cơ hội giải cứu.",
             "Màu mục tiêu: nếu 1 hàng đã đầy nhưng có 2 hoặc nhiều màu khác nhau trong cùng hàng, màu chiếm số lượng ô ít nhất là màu mục tiêu."
         ]
+    },
+    6: {
+        title: "LV6 - KHÓA KHỐI BẰNG KHIÊN",
+        paragraphs: [
+            "Mỗi khối bắt đầu đếm 3 giây kể từ khi được khóa xuống bàn cờ, sau 3 giây nhận khiên bảo vệ. Khiên phát sáng theo màu gốc của khối.",
+            "Hàng đầy không có khối được bảo vệ sẽ bị xóa bình thường.",
+            "Nếu hàng có khối được bảo vệ cùng màu, các ô được bảo vệ được giữ lại. Nếu hàng đầy và có nhiều màu khiên khác nhau, toàn bộ hàng được xóa.",
+            "Phá khiên cộng hưởng màu: phá khiên của các khối cùng màu ở nơi khác trên bàn cờ. Thời gian khi mở menu tạm dừng không được tính vào bộ đếm."
+        ]
     }
 };
 // tthai game
@@ -128,7 +141,10 @@ const gameState = {
     boardGreyCells: [],
     rescueRows: [],
     nextPieceIsGray: null,
-    nextPieceId: 0
+    nextPieceId: 0,
+// 6
+    shieldTimer: null,
+    shieldStages: {}
 };
 
 const gameBoardElement = document.getElementById("game-board");
@@ -362,11 +378,17 @@ function mergePiece(piece) {
             gameState.boardVisibleUntil[y][x] = gameState.selectedLevel === 3 ? visibleUntil : 0;
         }
     }
+    if(gameState.selectedLevel === 6 && hasPieceOnBoard(piece.pieceId)){
+        gameState.shieldStages[piece.pieceId] = {status: "charging", elapsed: 0, color: piece.color};
+    }
 }
 
 function clearFullLines() {
     if(gameState.selectedLevel === 5){
         return clearFullLinesLevel5();
+    }
+    if(gameState.selectedLevel === 6){
+        return clearFullLinesLevel6();
     }
     const remainingRows = [];
     for(let row = 0; row < ROWS; row++) {
@@ -480,6 +502,143 @@ function clearFullLinesLevel5(){
 function setSpawnPosition(piece) {
     piece.x = Math.floor((COLS - piece.shape[0].length) / 2);
     piece.y = 0;
+}
+
+// 6
+function hasPieceOnBoard(pieceId){
+    return gameState.boardPieceIds.some(row => row.includes(Number(pieceId)));
+}
+
+function stopShieldTimer() {
+    if (gameState.shieldTimer !== null) {
+        clearInterval(gameState.shieldTimer);
+        gameState.shieldTimer = null;
+    }
+}
+
+function updateShieldStatus(){
+    let shieldChanged = false;
+    for(const pieceId of Object.keys(gameState.shieldStages)){
+        const shield = gameState.shieldStages[pieceId];
+        if(shield.status !== "charging"){
+            continue;
+        }
+        if(!hasPieceOnBoard(pieceId)){
+            delete gameState.shieldStages[pieceId];
+            continue;
+        }
+        shield.elapsed += SHIELD_TICK;
+        if(shield.elapsed >= SHIELD_DELAY){
+            shield.status = "active";
+            shieldChanged = true;
+        }
+    }
+    if(shieldChanged){
+        renderGame();
+    }
+}
+
+function getActiveShield(pieceId){
+    if(pieceId === null && pieceId === undefined){
+        return null;
+    }
+    const shield = gameState.shieldStages[pieceId];
+    return shield && shield.status === "active" ? shield : null;
+}
+
+function classifyShieldRow(row){
+    const protectedPieceId = new Set();
+    const shieldColor = new Set();
+    for(let col = 0; col < COLS; col++) {
+        const pieceId = gameState.boardPieceIds[row][col];
+        const shield = getActiveShield(pieceId);
+        if(shield){
+            protectedPieceId.add(Number(pieceId));
+            shieldColor.add(shield.color);
+        }
+    }
+    let type = "normal";
+    if(shieldColor.size === 1){
+        type = "partial";
+    }else if(shieldColor.size > 1){
+        type = "multi-color";
+    }
+    return {row, type, protectedPieceId, color: [...shieldColor]};
+}
+
+function breakShieldByColors(colors){
+    const colorSet = new Set(colors);
+    for(const shield of Object.values(gameState.shieldStages)){
+        if(shield.status === "active" && colorSet.has(shield.color)){
+            shield.status = "broken";
+        }
+    }
+}
+
+function clearFullLinesLevel6(){
+    const fullRows = [];
+    for(let row = 0; row < ROWS; row++) {
+        if (gameState.board[row].every(cell => cell !== null)) {
+            fullRows.push(classifyShieldRow(row));
+        }
+    }
+    if(fullRows.length === 0){
+            return 0;
+    }
+    const linkedColors = new Set();
+    for(const rowInfo of fullRows){
+        if(rowInfo.type !== "normal"){
+            rowInfo.color.forEach(color => {linkedColors.add(color)} );
+        }
+    }
+    breakShieldByColors([...linkedColors]);
+    const rowsToRemove = new Set();
+    for(const rowInfo of fullRows){
+        if(rowInfo.type !== "partial"){
+            rowsToRemove.add(rowInfo.row);
+            continue;
+        }
+        for(let col = 0; col < COLS; col++) {
+            const pieceId = gameState.boardPieceIds[rowInfo.row][col];
+            if(!rowInfo.protectedPieceId.has(pieceId)){
+                gameState.board[rowInfo.row][col] = null;
+                gameState.boardPieceIds[rowInfo.row][col] = null;
+                gameState.boardGreyCells[rowInfo.row][col] = false;
+                gameState.boardVisibleUntil[rowInfo.row][col] = 0;
+            }
+        }
+    }
+    const remainingRows = [];
+    for(let row = 0; row < ROWS; row++) {
+        if(!rowsToRemove.has(row)){
+            remainingRows.push(row);
+        }
+    }
+    gameState.board = remainingRows.map( row => gameState.board[row] );
+    gameState.boardPieceIds = remainingRows.map(row => gameState.boardPieceIds[row]);
+    gameState.boardGreyCells = remainingRows.map(row => gameState.boardGreyCells[row]);
+    gameState.boardVisibleUntil = remainingRows.map(row => gameState.boardVisibleUntil[row]);
+    gameState.rescueRows = remainingRows.map(row => gameState.rescueRows[row]);
+    while(gameState.board.length < ROWS){
+        gameState.board.unshift(Array(COLS).fill(null));
+        gameState.boardPieceIds.unshift(Array(COLS).fill(null));
+        gameState.boardGreyCells.unshift(Array(COLS).fill(false));
+        gameState.boardVisibleUntil.unshift(Array(COLS).fill(0));
+        gameState.rescueRows.unshift(null);
+    }
+    for(const pieceId of Object.keys(gameState.shieldStages)){
+        if(!hasPieceOnBoard(pieceId)){
+            delete gameState.shieldStages[pieceId];
+        }
+    }
+    return rowsToRemove.size;
+}
+
+function startShieldTimer(){
+    if(gameState.selectedLevel !== 6 || gameState.isPaused || gameState.isGameOver || gameState.shieldTimer !== null){
+        return;
+    }
+    gameState.shieldTimer = window.setInterval(updateShieldStatus, SHIELD_TICK);
 }
 
 function fillNextQueue() {
@@ -624,6 +783,16 @@ function renderBoard() {
                 shouldShow = temporaryVisible || boardDisplay;
             }
             cell.style.backgroundColor = color !== null && shouldShow ? color : "";
+            // 6
+            const pieceId = gameState.boardPieceIds[row][col];
+            const shield = gameState.selectedLevel === 6? getActiveShield(pieceId): null;
+            const showShield = color !== null && shouldShow && shield !== null;
+            cell.classList.toggle("shielded-cell", showShield);
+            if(showShield){
+                cell.style.setProperty("--shield-color", shield.color);
+            }else {
+                cell.style.removeProperty("--shield-color");
+            }
         }
     }
 }
@@ -850,6 +1019,7 @@ function renderGameOverScores() {
 }
 
 function resetGameState() {
+    stopShieldTimer(); // 6
     gameState.board = createEmptyBoard();
     gameState.cells = [];
     gameState.currentPiece = null;
@@ -867,6 +1037,7 @@ function resetGameState() {
     gameState.rescueRows = createEmptyRescueRow();
     gameState.nextPieceIsGray = null;
     gameState.nextPieceId = 0;
+    gameState.shieldStages = {}; // 6
 
     hideOverlay("pause-overlay");
     hideOverlay("settings-overlay");
@@ -912,6 +1083,9 @@ function startGame() {
     if(gameState.selectedLevel === 4 && !gameState.isGameOver) {
         startGarbageTimer();
         scheduleAutoRotate();
+    }
+    if(gameState.selectedLevel === 6 && !gameState.isGameOver) {
+        startShieldTimer();
     }
 }
 
@@ -1031,6 +1205,7 @@ function togglePause() {
         stopDropLoop();
         stopGarbageTimer();
         stopAutoRotateTimer();
+        stopShieldTimer();
         showOverlay("pause-overlay");
         return;
     }
@@ -1040,6 +1215,9 @@ function togglePause() {
     if(gameState.selectedLevel === 4){
         startGarbageTimer();
         scheduleAutoRotate();
+    }
+    if(gameState.selectedLevel === 6){
+        startShieldTimer();
     }
 }
 
@@ -1051,6 +1229,7 @@ function endGame() {
     stopDropLoop();
     stopGarbageTimer();
     stopAutoRotateTimer();
+    stopShieldTimer();
     saveHighScore(gameState.score);
     renderHighScoreList();
     renderGameOverScores();
