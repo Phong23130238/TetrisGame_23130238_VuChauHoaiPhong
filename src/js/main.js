@@ -127,6 +127,7 @@ const gameState = {
     selectedLevel:1,
     isPaused: false,
     isGameOver: false,
+    isLevelComplete: false,
     timer: null,
 // 3
     boardVisibleUntil: [],
@@ -943,6 +944,50 @@ function hideOverlay(id) {
     }
 }
 
+function goToLevel(level){
+    if(!Number.isInteger(level) || level < 1 || level > 6){
+        return;
+    }
+    window.location.href = `./game.html?level=${level}`;
+}
+
+let hackReturnOverlayId = "pause-overlay";
+
+function openHackLevelMenu(returnOverlayId){
+    hackReturnOverlayId = returnOverlayId;
+    hideOverlay(returnOverlayId);
+    showOverlay("hack-level-overlay");
+}
+
+function closeHackLevelMenu(){
+    hideOverlay("hack-level-overlay");
+    showOverlay(hackReturnOverlayId);
+}
+
+function completeLevel(){
+    if(gameState.isLevelComplete || gameState.isGameOver){
+        return;
+    }
+    gameState.isLevelComplete = true;
+    gameState.isPaused = true;
+    stopDropLoop();
+    stopGarbageTimer();
+    stopAutoRotateTimer();
+    stopShieldTimer();
+    hideOverlay("pause-overlay");
+    hideOverlay("settings-overlay");
+    hideOverlay("hack-level-overlay");
+    hideOverlay("game-over-overlay");
+    const nextButton = getElement("next-level-button");
+    if(nextButton){
+        const hasNextLevel = gameState.selectedLevel < 6;
+        nextButton.disabled = !hasNextLevel;
+        nextButton.innerHTML = hasNextLevel ? '<i class="fa-solid fa-arrow-right"></i> MÀN TIẾP THEO' : "ĐÃ HOÀN THÀNH LEVEL CUỐI";
+    }
+    showOverlay("level-complete-overlay");
+    renderGame();
+}
+
 function getHighScores() {
     try {
         const savedScores = JSON.parse(localStorage.getItem(HIGH_SCORE_KEY) || "[]");
@@ -1031,6 +1076,7 @@ function resetGameState() {
     gameState.level = gameState.selectedLevel;
     gameState.isPaused = false;
     gameState.isGameOver = false;
+    gameState.isLevelComplete = false;
 // 5
     gameState.boardPieceIds = createEmptyBoard();
     gameState.boardGreyCells = createEmptyGreyBoard();
@@ -1042,6 +1088,8 @@ function resetGameState() {
     hideOverlay("pause-overlay");
     hideOverlay("settings-overlay");
     hideOverlay("game-over-overlay");
+    hideOverlay("hack-level-overlay");
+    hideOverlay("level-complete-overlay");
 
     // 3
     if(gameState.visibilityTimer !== null){
@@ -1155,12 +1203,16 @@ function hardDrop() {
 }
 
 function lockCurrentPiece(isHardDrop = false) {
-    if (!gameState.currentPiece || gameState.isGameOver) {
+    if (!gameState.currentPiece || gameState.isGameOver || gameState.isLevelComplete) {
         return;
     }
     processColorAbsortion();
     mergePiece(gameState.currentPiece);
     clearLinesAndUpdateScore();
+    if(gameState.isLevelComplete){
+        renderGame();
+        return;
+    }
     if(isHardDrop){
         displayLockedBoard(1500);
     }
@@ -1197,7 +1249,7 @@ function holdCurrentPiece() {
 }
 
 function togglePause() {
-    if (gameState.isGameOver) {
+    if (gameState.isGameOver || gameState.isLevelComplete) {
         return;
     }
     gameState.isPaused = !gameState.isPaused;
@@ -1222,7 +1274,7 @@ function togglePause() {
 }
 
 function endGame() {
-    if (gameState.isGameOver) {
+    if (gameState.isGameOver || gameState.isLevelComplete) {
         return;
     }
     gameState.isGameOver = true;
@@ -1373,6 +1425,22 @@ function initializeGameControls() {
     addClickEvent("setting-back-button", () => {hideOverlay("settings-overlay");showOverlay("pause-overlay");});
     addClickEvent("reset-score-button", resetHighScores);
     addClickEvent("more-games-button", () => {alert("Các màn chơi tiếp theo chưa được triển khai.");});
+    addClickEvent("pause-replay-button", startGame);
+    addClickEvent("hack-level-button", () => {openHackLevelMenu("pause-overlay");});
+    addClickEvent("hack-level-back-button", closeHackLevelMenu);
+    document.querySelectorAll(".hack-level-option").forEach(button => {
+        button.addEventListener("click", () => {
+            const level = Number(button.dataset.level);
+            goToLevel(level);
+        });
+    });
+    addClickEvent("complete-home-button", () => {window.location.href = "./index.html";});
+    addClickEvent("complete-replay-button", startGame);
+    addClickEvent("next-level-button", () => {
+        const nextLevel = gameState.selectedLevel + 1;
+        goToLevel(nextLevel);
+    });
+    addClickEvent("complete-hack-level-button", () => {openHackLevelMenu("level-complete-overlay");});
 }
 
 function initializeGamePage() {
@@ -1430,6 +1498,9 @@ function clearLinesAndUpdateScore(){
     const scoreByLines = [0, 100, 300, 500, 800];
     gameState.lines += clearedLines;
     gameState.score += scoreByLines[clearedLines] || 0;
+    if (gameState.lines >= 20) {
+        completeLevel();
+    }
 }
 
 initializeMenu();
