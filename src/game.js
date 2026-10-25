@@ -540,7 +540,7 @@ function updateShieldStatus(){
 }
 
 function getActiveShield(pieceId){
-    if(pieceId === null && pieceId === undefined){
+    if(pieceId === null || pieceId === undefined){
         return null;
     }
     const shield = gameState.shieldStages[pieceId];
@@ -970,6 +970,9 @@ function completeLevel(){
     }
     gameState.isLevelComplete = true;
     gameState.isPaused = true;
+    saveHighScore(gameState.score);
+    renderHighScoreList();
+    renderGameOverScores();
     stopDropLoop();
     stopGarbageTimer();
     stopAutoRotateTimer();
@@ -982,7 +985,7 @@ function completeLevel(){
     if(nextButton){
         const hasNextLevel = gameState.selectedLevel < 6;
         nextButton.disabled = !hasNextLevel;
-        nextButton.innerHTML = hasNextLevel ? '<i class="fa-solid fa-arrow-right"></i> MÀN TIẾP THEO' : "ĐÃ HOÀN THÀNH LEVEL CUỐI";
+        nextButton.innerHTML = hasNextLevel ? "MÀN TIẾP THEO" : "ĐÃ HOÀN THÀNH LEVEL CUỐI";
     }
     showOverlay("level-complete-overlay");
     renderGame();
@@ -995,15 +998,19 @@ function getHighScores() {
             return [];
         }
         return savedScores
-            .filter(score => typeof score === "number" && Number.isFinite(score))
+            .filter(score => typeof score === "number" && Number.isFinite(score) && score > 0)
             .sort((a, b) => b - a)
             .slice(0, 5);
     } catch (error) {
+        console.warn("Không thể đọc kỷ lục:", error);
         return [];
     }
 }
 
 function saveHighScore(score) {
+    if(typeof score !== "number" || !Number.isFinite(score) || score <= 0) {
+        return;
+    }
     const scores = getHighScores();
     scores.push(score);
     scores.sort((a, b) => b - a);
@@ -1041,7 +1048,7 @@ function renderHighScoreList() {
         playerName.className = "player-name";
         playerScore.className = "player-score";
         rank.textContent = index + 1;
-        playerName.textContent = scores[index] === undefined ? "—" : "PLAYER";
+        playerName.textContent = scores[index] === undefined ? "—" : "NGƯỜI CHƠI " + rank.textContent;
         playerScore.textContent = scores[index] === undefined ? "—" : scores[index];
         row.append(rank, playerName, playerScore);
         list.appendChild(row);
@@ -1441,6 +1448,7 @@ function initializeGameControls() {
         goToLevel(nextLevel);
     });
     addClickEvent("complete-hack-level-button", () => {openHackLevelMenu("level-complete-overlay");});
+    addClickEvent("game-over-hack-level-button", () => {openHackLevelMenu("game-over-overlay");});
 }
 
 function initializeGamePage() {
@@ -1474,7 +1482,7 @@ function initializeGamePage() {
 }
 
 // âm thanh
-const clearLineSound = new Audio("../sounds/clear-line.mp3");
+const clearLineSound = new Audio("./clear-line.mp3");
 clearLineSound.volume = 0.6;
 
 function playClearLineSound(){
