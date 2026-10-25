@@ -948,7 +948,7 @@ function goToLevel(level){
     if(!Number.isInteger(level) || level < 1 || level > 6){
         return;
     }
-    window.location.href = `./game.html?level=${level}`;
+    window.location.href = `./index.html?view=game&level=${level}`;
 }
 
 let hackReturnOverlayId = "pause-overlay";
@@ -1357,14 +1357,14 @@ function initializeMenu() {
     renderHighScoreList();
     addClickEvent("play-button", () => {
         const selectedLevel = getSelectedLevel();
-        window.location.href = `./game.html?level=${selectedLevel}`;
+        window.location.href = `./index.html?view=game&level=${selectedLevel}`;
     });
     addClickEvent("settings-button", () => {
         try {
             sessionStorage.setItem("openSettingsOnStart", "true");
         } catch (error) {
         }
-        window.location.href = `./game.html?level=${getSelectedLevel()}`;
+        window.location.href = `./index.html?view=game&level=${getSelectedLevel()}`;
     });
 }
 
@@ -1447,8 +1447,11 @@ function initializeGamePage() {
     if (!gameBoardElement) {
         return;
     }
-    const param = new URLSearchParams(window.location.search);
-    const requestedLevel = Number(param.get("level"));
+    const params = new URLSearchParams(window.location.search);
+    if(params.get("view") !== "game"){
+        return;
+    }
+    const requestedLevel = Number(params.get("level"));
     if([1, 2, 3, 4, 5, 6].includes(requestedLevel)) {
         gameState.selectedLevel = requestedLevel;
     }else{
@@ -1503,5 +1506,19 @@ function clearLinesAndUpdateScore(){
     }
 }
 
+function setPageView() {
+    const params = new URLSearchParams(window.location.search);
+    const isGameView = params.get("view") === "game";
+    const menuPage = document.querySelector(".menu-page");
+    const gamePage = document.querySelector(".game-page");
+    if(menuPage){
+        menuPage.classList.toggle("hidden", isGameView);
+    }
+    if(gamePage){
+        gamePage.classList.toggle("hidden", !isGameView);
+    }
+}
+
+setPageView();
 initializeMenu();
 initializeGamePage();
